@@ -1,0 +1,1 @@
+full contents of src/pages/layouts/CreatorLayout.tsx
