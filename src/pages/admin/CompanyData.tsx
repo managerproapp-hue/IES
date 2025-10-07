@@ -1,1 +1,0 @@
-full contents of src/pages/admin/CompanyData.tsx
