@@ -3,11 +3,11 @@ import { useData } from '../../contexts/DataContext';
 import { OrderStatus, Role } from '../../types';
 import { Link } from 'react-router-dom';
 
+// Fix: Define a type for teacher expense data to resolve type inference issues with Object.entries.
+type TeacherExpenseData = { name: string, expense: number, orders: number, sales: number };
+
 const ExpenseManagement: React.FC = () => {
     const { users, sales, orders, orderItems, products, cycles, modules, groups, assignments, suppliers } = useData();
-
-    // Fix: Define a type for teacher expense data to resolve type inference issues with Object.entries.
-    type TeacherExpenseData = { name: string, expense: number, orders: number, sales: number };
 
     const {
         totalExpense,
