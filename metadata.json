@@ -1,5 +1,0 @@
-{
-  "name": "Manuales Manager 2.5 para subir con vite",
-  "description": "A self-contained, multi-role management SPA built with React and TypeScript. It operates without a backend, persisting data in the browser's local storage, and features a dynamic UI that adapts to the user's active role.",
-  "requestFramePermissions": []
-}
