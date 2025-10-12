@@ -136,9 +136,69 @@ export interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const getStartOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
+};
+
+
 const generateUpcomingRegularEvents = (existingEvents: Event[], companyInfo: CompanyInfo): Event[] => {
-    // ... (implementation remains the same, but now can use companyInfo.eventWeeks and companyInfo.defaultBudget)
-    return [];
+    const newEvents: Event[] = [];
+    const regularEvents = existingEvents.filter(e => e.type === EventType.REGULAR);
+
+    // Determine the starting point for generation
+    let lastEventDate = new Date(); // Defaults to today if no events exist
+    if (regularEvents.length > 0) {
+        const latestEndDate = Math.max(...regularEvents.map(e => new Date(e.endDate).getTime()));
+        lastEventDate = new Date(latestEndDate);
+    }
+    
+    // Find the Monday of the week of our starting point.
+    const lastKnownMonday = getStartOfWeek(lastEventDate);
+    
+    // Start checking from the week AFTER the last known event.
+    let currentDate = new Date(lastKnownMonday);
+    currentDate.setDate(currentDate.getDate() + 7);
+
+    // Determine the end point for generation
+    const futureLimit = new Date();
+    futureLimit.setDate(new Date().getDate() + companyInfo.eventWeeks * 7);
+
+    // Get a set of existing start dates for quick lookup
+    const existingMondays = new Set(
+        regularEvents.map(e => getStartOfWeek(new Date(e.startDate)).getTime())
+    );
+
+    while (currentDate < futureLimit) {
+        const startOfWeek = getStartOfWeek(currentDate);
+        
+        // If an event for this Monday doesn't already exist
+        if (!existingMondays.has(startOfWeek.getTime())) {
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 4); // Friday
+            endOfWeek.setHours(23, 59, 59, 999);
+            
+            const newEvent: Event = {
+                id: `event-auto-${startOfWeek.getTime()}`,
+                name: `Pedido Semanal - Semana del ${startOfWeek.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
+                type: EventType.REGULAR,
+                status: EventStatus.SCHEDULED,
+                startDate: startOfWeek.toISOString(),
+                endDate: endOfWeek.toISOString(),
+                budget: companyInfo.defaultBudget,
+                authorizedTeacherIds: [],
+            };
+            newEvents.push(newEvent);
+        }
+
+        // Move to the next week to continue checking
+        currentDate.setDate(currentDate.getDate() + 7);
+    }
+
+    return newEvents;
 };
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -208,7 +268,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedEvents = storage.local.get<Event[]>('events', []);
     const loadedCompanyInfo = storage.local.get('companyInfo', DEFAULT_COMPANY_INFO);
     const newRegularEvents = generateUpcomingRegularEvents(storedEvents, loadedCompanyInfo);
-    const allEvents = [...storedEvents, ...newRegularEvents];
+    const allEvents = newRegularEvents.length > 0 ? [...storedEvents, ...newRegularEvents] : storedEvents;
     if (newRegularEvents.length > 0) {
         storage.local.set('events', allEvents);
     }
