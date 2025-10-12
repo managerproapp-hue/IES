@@ -48,6 +48,7 @@ export interface CompanyInfo {
   phone: string;
   email: string;
   address: string;
+  website?: string;
   logoUI: string;
   logoPDF: string;
   primaryColor: string;
