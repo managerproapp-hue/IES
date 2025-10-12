@@ -1,4 +1,3 @@
-
 import React, { useRef, ChangeEvent, useState, FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -84,6 +83,7 @@ const MyProfile: React.FC = () => {
   }
 
   const handleAvatarClick = () => {
+    if (impersonatingUser) return;
     fileInputRef.current?.click();
   };
 
@@ -113,20 +113,24 @@ const MyProfile: React.FC = () => {
             <div className="flex flex-col items-center text-center">
                 <div className="relative group">
                     <img className="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-700" src={currentUser.avatar} alt="User Avatar" />
-                    <button 
-                      onClick={handleAvatarClick}
-                      className="absolute inset-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      aria-label="Change profile picture"
-                    >
-                        <EditIcon className="w-8 h-8 text-white" />
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileChange}
-                      accept="image/png, image/jpeg, image/gif"
-                      className="hidden"
-                    />
+                    {!impersonatingUser && (
+                        <>
+                            <button 
+                              onClick={handleAvatarClick}
+                              className="absolute inset-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                              aria-label="Change profile picture"
+                            >
+                                <EditIcon className="w-8 h-8 text-white" />
+                            </button>
+                            <input 
+                              type="file" 
+                              ref={fileInputRef} 
+                              onChange={handleFileChange}
+                              accept="image/png, image/jpeg, image/gif"
+                              className="hidden"
+                            />
+                        </>
+                    )}
                 </div>
                 <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">{currentUser.name}</h1>
                 <p className="text-gray-500 dark:text-gray-400 mt-1">{currentUser.email}</p>

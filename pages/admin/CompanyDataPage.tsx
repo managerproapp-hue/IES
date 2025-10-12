@@ -23,10 +23,6 @@ const CompanyDataPage: React.FC = () => {
     const warehouseManagers = users.filter(u => u.roles.includes(Role.MANAGER));
 
     const validateField = (name: string, value: string): string => {
-        if (name === 'cif') {
-            const cifRegex = /^[A-HJ-NP-SUVW]{1}[0-9]{7}[0-9A-J]{1}$|^[0-9]{8}[A-Z]{1}$/;
-            if (!cifRegex.test(value)) return 'Formato de CIF/NIF inválido.';
-        }
         if (name === 'email') {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(value)) return 'Formato de email inválido.';
@@ -129,6 +125,10 @@ const CompanyDataPage: React.FC = () => {
                                 <label className="label-style">Email</label>
                                 <input name="email" value={formState.email} onChange={handleChange} className="input-style" />
                                 {errors.email && <p className="error-text">{errors.email}</p>}
+                            </div>
+                            <div>
+                                <label className="label-style">Página Web</label>
+                                <input name="website" type="url" value={formState.website || ''} onChange={handleChange} placeholder="https://..." className="input-style" />
                             </div>
                             <div className="col-span-2">
                                 <label className="label-style">Dirección</label>

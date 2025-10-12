@@ -15,8 +15,9 @@ const DEFAULT_COMPANY_INFO: CompanyInfo = {
   phone: '968 23 45 67',
   email: 'info@ieslaflota.es',
   address: 'Calle de la Marina Española, 1, 30007 Murcia',
-  logoUI: 'https://via.placeholder.com/200x50.png?text=Logo+UI',
-  logoPDF: 'https://via.placeholder.com/200x50.png?text=Logo+PDF',
+  website: 'https://www.ieslaflota.es/',
+  logoUI: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiM0ZjQ2ZTUiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjU1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgwIiBmaWxsPSJ3aGl0ZSIgZm9udC13ZWlnaHQ9ImJvbGQiPklMRjwvdGV4dD4KPC9zdmc+',
+  logoPDF: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCAyMDAgNTAiPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9ImJsYWNrIiBmb250LXdlaWdodD0iYm9sZCI+SUVTIEEgRmxhdGE8L3RleHQ+Cjwvc3ZnPg==',
   primaryColor: '#4f46e5', // Indigo-600
   warehouseManagerId: 'user-3',
   defaultBudget: 500,

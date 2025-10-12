@@ -1,11 +1,11 @@
 import React, { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useCreator } from '../contexts/CreatorContext';
+import { useData } from '../contexts/DataContext';
 
 const ForceChangePassword = () => {
     const { currentUser, changePassword } = useAuth();
-    const { creatorInfo } = useCreator();
+    const { companyInfo } = useData();
     const navigate = useNavigate();
 
     const [newPassword, setNewPassword] = useState('');
@@ -51,7 +51,7 @@ const ForceChangePassword = () => {
                 <div className="h-1.5 bg-indigo-500"></div>
                 <div className="p-8 space-y-8">
                     <div className="text-center">
-                        <img src={creatorInfo.logo} alt="Logo" className="mx-auto h-20 w-20 rounded-full"/>
+                        <img src={companyInfo.logoUI} alt="Logo" className="mx-auto h-20 w-20 rounded-md object-cover"/>
                         <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
                             Cambio de Contraseña Obligatorio
                         </h2>
