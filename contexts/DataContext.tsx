@@ -299,39 +299,52 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     storage.local.set('companyInfo', info);
   };
 
-  const persistUsers = useCallback((updatedUsers: User[]) => {
-      setUsers(updatedUsers);
-      storage.local.set('users', updatedUsers);
-      const authUsers = storage.local.get<User[]>('users_auth', []);
-      const updatedAuthUsers = authUsers.map(authUser => {
-          const updatedUser = updatedUsers.find(u => u.id === authUser.id);
-          return updatedUser ? { ...authUser, ...updatedUser } : authUser;
-      });
-      updatedUsers.forEach(updatedUser => {
-          if (!authUsers.find(u => u.id === updatedUser.id)) {
-              updatedAuthUsers.push({ ...updatedUser, password: 'password' });
-          }
-      });
-      storage.local.set('users_auth', updatedAuthUsers);
-  }, []);
-
   const addUser = (userData: Omit<User, 'id'>): User => {
-    const newUser: User = { ...userData, id: `user-${Date.now()}`, mustChangePassword: true };
-    const updatedUsers = [...users, newUser];
-    persistUsers(updatedUsers);
-    return newUser;
+      const newUser: User = { ...userData, id: `user-${Date.now()}`, mustChangePassword: true };
+      const { password, ...userForState } = newUser;
+
+      setUsers(prev => {
+          const updated = [...prev, userForState];
+          storage.local.set('users', updated);
+          
+          const authUsers = storage.local.get<User[]>('users_auth', []);
+          const newAuthUser = { ...newUser, password: newUser.password || 'password' };
+          const updatedAuthUsers = [...authUsers, newAuthUser];
+          storage.local.set('users_auth', updatedAuthUsers);
+          
+          return updated;
+      });
+      return userForState;
   };
 
   const updateUser = (updatedUser: User) => {
-    const updatedUsers = users.map((user) =>
-      user.id === updatedUser.id ? updatedUser : user
-    );
-    persistUsers(updatedUsers);
+      setUsers(prev => {
+          const updated = prev.map((user) =>
+              user.id === updatedUser.id ? { ...user, ...updatedUser } : user
+          );
+          storage.local.set('users', updated);
+
+          const authUsers = storage.local.get<User[]>('users_auth', []);
+          const updatedAuthUsers = authUsers.map(authUser => 
+              authUser.id === updatedUser.id ? { ...authUser, ...updatedUser } : authUser
+          );
+          storage.local.set('users_auth', updatedAuthUsers);
+
+          return updated;
+      });
   };
-  
+
   const deleteUser = (userId: string) => {
-    const updatedUsers = users.filter((user) => user.id !== userId);
-    persistUsers(updatedUsers);
+      setUsers(prev => {
+          const updated = prev.filter((user) => user.id !== userId);
+          storage.local.set('users', updated);
+
+          const authUsers = storage.local.get<User[]>('users_auth', []);
+          const updatedAuthUsers = authUsers.filter(user => user.id !== userId);
+          storage.local.set('users_auth', updatedAuthUsers);
+
+          return updated;
+      });
   };
   
   const getUserById = (userId: string): User | undefined => {
@@ -340,32 +353,38 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   const addSupplier = (supplierData: Omit<Supplier, 'id'>) => {
     const newSupplier = { ...supplierData, id: `supplier-${Date.now()}` };
-    const updatedSuppliers = [...suppliers, newSupplier];
-    setSuppliers(updatedSuppliers);
-    storage.local.set('suppliers', updatedSuppliers);
-  };
-  const updateSupplier = (updatedSupplier: Supplier) => {
-    const updatedSuppliers = suppliers.map(s => s.id === updatedSupplier.id ? updatedSupplier : s);
-    setSuppliers(updatedSuppliers);
-    storage.local.set('suppliers', updatedSuppliers);
-  };
-  const deleteSupplier = (supplierId: string) => {
-    const updatedProducts = products.map(p => {
-        const isAssociated = p.suppliers.some(s => s.supplierId === supplierId);
-        if (isAssociated) {
-            return {
-                ...p,
-                suppliers: p.suppliers.filter(s => s.supplierId !== supplierId)
-            };
-        }
-        return p;
+    setSuppliers(prev => {
+        const updated = [...prev, newSupplier];
+        storage.local.set('suppliers', updated);
+        return updated;
     });
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+  };
 
-    const updatedSuppliers = suppliers.filter(s => s.id !== supplierId);
-    setSuppliers(updatedSuppliers);
-    storage.local.set('suppliers', updatedSuppliers);
+  const updateSupplier = (updatedSupplier: Supplier) => {
+    setSuppliers(prev => {
+        const updated = prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s);
+        storage.local.set('suppliers', updated);
+        return updated;
+    });
+  };
+
+  const deleteSupplier = (supplierId: string) => {
+    setProducts(prev => {
+        const updated = prev.map(p => {
+            if (p.suppliers.some(s => s.supplierId === supplierId)) {
+                return { ...p, suppliers: p.suppliers.filter(s => s.supplierId !== supplierId) };
+            }
+            return p;
+        });
+        storage.local.set('products', updated);
+        return updated;
+    });
+
+    setSuppliers(prev => {
+        const updated = prev.filter(s => s.id !== supplierId);
+        storage.local.set('suppliers', updated);
+        return updated;
+    });
   };
 
   const addProduct = (productData: Omit<Product, 'id'>) => {
@@ -374,23 +393,31 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Reference code already exists');
     }
     const newProduct = { ...productData, id: `prod-${Date.now()}` };
-    const updatedProducts = [...products, newProduct];
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+    setProducts(prev => {
+        const updated = [...prev, newProduct];
+        storage.local.set('products', updated);
+        return updated;
+    });
   };
+
   const updateProduct = (updatedProduct: Product) => {
      if (products.some(p => p.id !== updatedProduct.id && p.reference === updatedProduct.reference)) {
         alert('Error: Ya existe otro producto con esa referencia.');
         throw new Error('Reference code already exists');
     }
-    const updatedProducts = products.map(p => p.id === updatedProduct.id ? updatedProduct : p);
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+    setProducts(prev => {
+        const updated = prev.map(p => p.id === updatedProduct.id ? updatedProduct : p);
+        storage.local.set('products', updated);
+        return updated;
+    });
   };
+
   const deleteProduct = (productId: string) => {
-    const updatedProducts = products.filter(p => p.id !== productId);
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+    setProducts(prev => {
+        const updated = prev.filter(p => p.id !== productId);
+        storage.local.set('products', updated);
+        return updated;
+    });
   };
 
   const addFamily = (name: string): CatalogFamily => {
@@ -400,9 +427,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Family name already exists or is empty.');
     }
     const newFamily: CatalogFamily = { id: `fam-${Date.now()}`, name: trimmedName };
-    const updatedFamilies = [...families, newFamily];
-    setFamilies(updatedFamilies);
-    storage.local.set('families', updatedFamilies);
+    setFamilies(prev => {
+        const updated = [...prev, newFamily];
+        storage.local.set('families', updated);
+        return updated;
+    });
     return newFamily;
   };
   
@@ -412,22 +441,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         alert("No se pueden eliminar las familias predefinidas del sistema.");
         return;
     }
-    const updatedFamilies = families.filter(f => f.id !== familyId);
-    setFamilies(updatedFamilies);
-    storage.local.set('families', updatedFamilies);
-    
-    const updatedCategories = categories.filter(c => c.familyId !== familyId);
-    setCategories(updatedCategories);
-    storage.local.set('categories', updatedCategories);
-    
-    const updatedProducts = products.map(p => {
-        if (p.family === familyId) {
-            return {...p, family: '', category: ''};
-        }
-        return p;
+    setFamilies(prev => {
+        const updated = prev.filter(f => f.id !== familyId);
+        storage.local.set('families', updated);
+        return updated;
     });
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+    
+    setCategories(prev => {
+        const updated = prev.filter(c => c.familyId !== familyId);
+        storage.local.set('categories', updated);
+        return updated;
+    });
+    
+    setProducts(prev => {
+        const updated = prev.map(p => (p.family === familyId) ? {...p, family: '', category: ''} : p);
+        storage.local.set('products', updated);
+        return updated;
+    });
   };
 
   const addCategory = (categoryData: Omit<CatalogCategory, 'id'>) => {
@@ -436,9 +466,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Category name already exists in this family or is empty.');
     }
     const newCategory = { ...categoryData, id: `cat-${Date.now()}` };
-    const updatedCategories = [...categories, newCategory];
-    setCategories(updatedCategories);
-    storage.local.set('categories', updatedCategories);
+    setCategories(prev => {
+        const updated = [...prev, newCategory];
+        storage.local.set('categories', updated);
+        return updated;
+    });
     return newCategory;
   };
 
@@ -448,25 +480,27 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         alert("No se pueden eliminar las categorías predefinidas del sistema.");
         return;
     }
-    const updatedCategories = categories.filter(c => c.id !== categoryId);
-    setCategories(updatedCategories);
-    storage.local.set('categories', updatedCategories);
-    
-    const updatedProducts = products.map(p => {
-        if (p.category === categoryId) {
-            return {...p, category: ''};
-        }
-        return p;
+    setCategories(prev => {
+        const updated = prev.filter(c => c.id !== categoryId);
+        storage.local.set('categories', updated);
+        return updated;
     });
-    setProducts(updatedProducts);
-    storage.local.set('products', updatedProducts);
+    
+    setProducts(prev => {
+        const updated = prev.map(p => (p.category === categoryId) ? {...p, category: ''} : p);
+        storage.local.set('products', updated);
+        return updated;
+    });
   };
 
   const addProductState = (newState: string) => {
-    if (newState.trim() && !productStates.some(s => s.toLowerCase() === newState.trim().toLowerCase())) {
-        const updatedStates = [...productStates, newState.trim()];
-        setProductStates(updatedStates);
-        storage.local.set('productStates', updatedStates);
+    const trimmedState = newState.trim();
+    if (trimmedState && !productStates.some(s => s.toLowerCase() === trimmedState.toLowerCase())) {
+        setProductStates(prev => {
+            const updated = [...prev, trimmedState];
+            storage.local.set('productStates', updated);
+            return updated;
+        });
     } else {
         alert('El estado del producto ya existe o está vacío.');
     }
@@ -474,20 +508,28 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addEvent = (eventData: Omit<Event, 'id'>): Event => {
     const newEvent = { ...eventData, id: `event-${Date.now()}` };
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
-    storage.local.set('events', updatedEvents);
+    setEvents(prev => {
+        const updated = [...prev, newEvent];
+        storage.local.set('events', updated);
+        return updated;
+    });
     return newEvent;
   };
+
   const updateEvent = (updatedEvent: Event) => {
-    const updatedEvents = events.map(e => e.id === updatedEvent.id ? updatedEvent : e);
-    setEvents(updatedEvents);
-    storage.local.set('events', updatedEvents);
+    setEvents(prev => {
+        const updated = prev.map(e => e.id === updatedEvent.id ? updatedEvent : e);
+        storage.local.set('events', updated);
+        return updated;
+    });
   };
+
   const deleteEvent = (eventId: string) => {
-    const updatedEvents = events.filter(e => e.id !== eventId);
-    setEvents(updatedEvents);
-    storage.local.set('events', updatedEvents);
+    setEvents(prev => {
+        const updated = prev.filter(e => e.id !== eventId);
+        storage.local.set('events', updated);
+        return updated;
+    });
   };
 
   const getOrdersByTeacher = (teacherId: string) => orders.filter(o => o.teacherId === teacherId);
@@ -499,246 +541,314 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const saveOrder = (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'type'> & {id?: string, type?: 'replenishment'}, itemsData: Omit<OrderItem, 'id' | 'orderId'>[]): Order => {
-    let orderToSave: Order;
-    const now = new Date().toISOString();
+      let finalOrder: Order;
+      const now = new Date().toISOString();
 
-    if(orderData.id) { // Update existing order
-        const existingOrder = orders.find(o => o.id === orderData.id)!;
-        orderToSave = { ...existingOrder, ...orderData, updatedAt: now };
-        const updatedOrders = orders.map(o => o.id === orderData.id ? orderToSave : o);
-        setOrders(updatedOrders);
-        storage.local.set('orders', updatedOrders);
-    } else { // Create new order
-        orderToSave = { ...orderData, id: `order-${Date.now()}`, createdAt: now, updatedAt: now };
-        const updatedOrders = [...orders, orderToSave];
-        setOrders(updatedOrders);
-        storage.local.set('orders', updatedOrders);
-    }
-    
-    const otherItems = orderItems.filter(i => i.orderId !== orderToSave.id);
-    const newItems = itemsData.map(item => ({...item, id: `item-${Date.now()}-${Math.random()}`, orderId: orderToSave.id }));
-    const updatedItems = [...otherItems, ...newItems];
-    setOrderItems(updatedItems);
-    storage.local.set('orderItems', updatedItems);
-    return orderToSave;
+      if (orderData.id) { // Update
+          setOrders(prev => {
+              const updated = prev.map(o => {
+                  if (o.id === orderData.id) {
+                      finalOrder = { ...o, ...orderData, updatedAt: now };
+                      return finalOrder;
+                  }
+                  return o;
+              });
+              storage.local.set('orders', updated);
+              return updated;
+          });
+      } else { // Create
+          finalOrder = { ...orderData, id: `order-${Date.now()}`, createdAt: now, updatedAt: now };
+          setOrders(prev => {
+              const updated = [...prev, finalOrder];
+              storage.local.set('orders', updated);
+              return updated;
+          });
+      }
+
+      setOrderItems(prev => {
+          const otherItems = prev.filter(i => i.orderId !== finalOrder.id);
+          const newItems = itemsData.map(item => ({ ...item, id: `item-${Date.now()}-${Math.random()}`, orderId: finalOrder.id }));
+          const updated = [...otherItems, ...newItems];
+          storage.local.set('orderItems', updated);
+          return updated;
+      });
+
+      return finalOrder!;
   };
   
   const deleteOrder = (orderId: string) => {
-    const updatedOrders = orders.filter(o => o.id !== orderId);
-    const updatedItems = orderItems.filter(i => i.orderId !== orderId);
-    setOrders(updatedOrders);
-    setOrderItems(updatedItems);
-    storage.local.set('orders', updatedOrders);
-    storage.local.set('orderItems', updatedItems);
+    setOrders(prev => {
+        const updated = prev.filter(o => o.id !== orderId);
+        storage.local.set('orders', updated);
+        return updated;
+    });
+    setOrderItems(prev => {
+        const updated = prev.filter(i => i.orderId !== orderId);
+        storage.local.set('orderItems', updated);
+        return updated;
+    });
   };
 
   const addSale = (saleData: Omit<Sale, 'id'>) => {
     const newSale = { ...saleData, id: `sale-${Date.now()}` };
-    const updatedSales = [...sales, newSale];
-    setSales(updatedSales);
-    storage.local.set('sales', updatedSales);
+    setSales(prev => {
+        const updated = [...prev, newSale];
+        storage.local.set('sales', updated);
+        return updated;
+    });
   };
+
   const updateSale = (updatedSale: Sale) => {
-    const updated = sales.map(s => s.id === updatedSale.id ? updatedSale : s);
-    setSales(updated);
-    storage.local.set('sales', updated);
+    setSales(prev => {
+        const updated = prev.map(s => s.id === updatedSale.id ? updatedSale : s);
+        storage.local.set('sales', updated);
+        return updated;
+    });
   };
+
   const deleteSale = (saleId: string) => {
-    const updated = sales.filter(s => s.id !== saleId);
-    setSales(updated);
-    storage.local.set('sales', updated);
+    setSales(prev => {
+        const updated = prev.filter(s => s.id !== saleId);
+        storage.local.set('sales', updated);
+        return updated;
+    });
   };
 
   const addRecipe = (recipeData: Omit<Recipe, 'id'>) => {
     const newRecipe = { ...recipeData, id: `recipe-${Date.now()}` };
-    const updated = [...recipes, newRecipe];
-    setRecipes(updated);
-    storage.local.set('recipes', updated);
+    setRecipes(prev => {
+        const updated = [...prev, newRecipe];
+        storage.local.set('recipes', updated);
+        return updated;
+    });
   };
+
   const updateRecipe = (updatedRecipe: Recipe) => {
-    const updated = recipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r);
-    setRecipes(updated);
-    storage.local.set('recipes', updated);
+    setRecipes(prev => {
+        const updated = prev.map(r => r.id === updatedRecipe.id ? updatedRecipe : r);
+        storage.local.set('recipes', updated);
+        return updated;
+    });
   };
+
   const deleteRecipe = (recipeId: string) => {
-    const updated = recipes.filter(r => r.id !== recipeId);
-    setRecipes(updated);
-    storage.local.set('recipes', updated);
+    setRecipes(prev => {
+        const updated = prev.filter(r => r.id !== recipeId);
+        storage.local.set('recipes', updated);
+        return updated;
+    });
   };
 
   const addServiceGroup = (groupData: Omit<ServiceGroup, 'id'>) => {
     const newGroup = { ...groupData, id: `sgroup-${Date.now()}` };
-    const updated = [...serviceGroups, newGroup];
-    setServiceGroups(updated);
-    storage.local.set('serviceGroups', updated);
+    setServiceGroups(prev => {
+        const updated = [...prev, newGroup];
+        storage.local.set('serviceGroups', updated);
+        return updated;
+    });
   };
+
   const updateServiceGroup = (updatedGroup: ServiceGroup) => {
-    const updated = serviceGroups.map(g => g.id === updatedGroup.id ? updatedGroup : g);
-    setServiceGroups(updated);
-    storage.local.set('serviceGroups', updated);
+    setServiceGroups(prev => {
+        const updated = prev.map(g => g.id === updatedGroup.id ? updatedGroup : g);
+        storage.local.set('serviceGroups', updated);
+        return updated;
+    });
   };
+
   const deleteServiceGroup = (groupId: string) => {
-    const updated = serviceGroups.filter(g => g.id !== groupId);
-    setServiceGroups(updated);
-    storage.local.set('serviceGroups', updated);
+    setServiceGroups(prev => {
+        const updated = prev.filter(g => g.id !== groupId);
+        storage.local.set('serviceGroups', updated);
+        return updated;
+    });
   };
   
   const addService = (serviceData: Omit<Service, 'id'>) => {
     const newService = { ...serviceData, id: `service-${Date.now()}` };
-    const updated = [...services, newService];
-    setServices(updated);
-    storage.local.set('services', updated);
+    setServices(prev => {
+        const updated = [...prev, newService];
+        storage.local.set('services', updated);
+        return updated;
+    });
   };
+
   const updateService = (updatedService: Service) => {
-    const updated = services.map(s => s.id === updatedService.id ? updatedService : s);
-    setServices(updated);
-    storage.local.set('services', updated);
+    setServices(prev => {
+        const updated = prev.map(s => s.id === updatedService.id ? updatedService : s);
+        storage.local.set('services', updated);
+        return updated;
+    });
   };
+
   const deleteService = (serviceId: string) => {
-    const updated = services.filter(s => s.id !== serviceId);
-    setServices(updated);
-    storage.local.set('services', updated);
+    setServices(prev => {
+        const updated = prev.filter(s => s.id !== serviceId);
+        storage.local.set('services', updated);
+        return updated;
+    });
   };
 
   const addCycle = (cycleData: Omit<Cycle, 'id'>) => {
     const newCycle: Cycle = { ...cycleData, id: `cycle-${Date.now()}`};
-    const updatedCycles = [...cycles, newCycle];
-    setCycles(updatedCycles);
-    storage.local.set('cycles', updatedCycles);
+    setCycles(prev => {
+        const updated = [...prev, newCycle];
+        storage.local.set('cycles', updated);
+        return updated;
+    });
   };
+  
   const updateCycle = (updatedCycle: Cycle) => {
-    const updatedCycles = cycles.map(c => c.id === updatedCycle.id ? updatedCycle : c);
-    setCycles(updatedCycles);
-    storage.local.set('cycles', updatedCycles);
+    setCycles(prev => {
+        const updated = prev.map(c => c.id === updatedCycle.id ? updatedCycle : c);
+        storage.local.set('cycles', updated);
+        return updated;
+    });
   };
+
   const deleteCycle = (cycleId: string) => {
     const modulesToDelete = modules.filter(m => m.cycleId === cycleId);
     modulesToDelete.forEach(m => deleteModule(m.id));
-    const updatedCycles = cycles.filter(c => c.id !== cycleId);
-    setCycles(updatedCycles);
-    storage.local.set('cycles', updatedCycles);
+    setCycles(prev => {
+        const updated = prev.filter(c => c.id !== cycleId);
+        storage.local.set('cycles', updated);
+        return updated;
+    });
   };
+  
   const addModule = (moduleData: Omit<Module, 'id'>) => {
     const newModule: Module = {...moduleData, id: `mod-${Date.now()}`};
-    const updatedModules = [...modules, newModule];
-    setModules(updatedModules);
-    storage.local.set('modules', updatedModules);
+    setModules(prev => {
+        const updated = [...prev, newModule];
+        storage.local.set('modules', updated);
+        return updated;
+    });
   };
+
   const updateModule = (updatedModule: Module) => {
-    const updatedModules = modules.map(m => m.id === updatedModule.id ? updatedModule : m);
-    setModules(updatedModules);
-    storage.local.set('modules', updatedModules);
+    setModules(prev => {
+        const updated = prev.map(m => m.id === updatedModule.id ? updatedModule : m);
+        storage.local.set('modules', updated);
+        return updated;
+    });
   };
+
   const deleteModule = (moduleId: string) => {
     const groupsToDelete = groups.filter(g => g.moduleId === moduleId);
     groupsToDelete.forEach(g => deleteGroup(g.id));
-    const updatedModules = modules.filter(m => m.id !== moduleId);
-    setModules(updatedModules);
-    storage.local.set('modules', updatedModules);
+    setModules(prev => {
+        const updated = prev.filter(m => m.id !== moduleId);
+        storage.local.set('modules', updated);
+        return updated;
+    });
   };
+
   const addGroup = (groupData: Omit<Group, 'id'>) => {
     const newGroup: Group = {...groupData, id: `group-${Date.now()}`};
-    const updatedGroups = [...groups, newGroup];
-    setGroups(updatedGroups);
-    storage.local.set('groups', updatedGroups);
+    setGroups(prev => {
+        const updated = [...prev, newGroup];
+        storage.local.set('groups', updated);
+        return updated;
+    });
   };
+
   const updateGroup = (updatedGroup: Group) => {
-    const updatedGroups = groups.map(g => g.id === updatedGroup.id ? updatedGroup : g);
-    setGroups(updatedGroups);
-    storage.local.set('groups', updatedGroups);
+    setGroups(prev => {
+        const updated = prev.map(g => g.id === updatedGroup.id ? updatedGroup : g);
+        storage.local.set('groups', updated);
+        return updated;
+    });
   };
+
   const deleteGroup = (groupId: string) => {
-    const updatedAssignments = assignments.filter(a => a.groupId !== groupId);
-    setAssignments(updatedAssignments);
-    storage.local.set('assignments', updatedAssignments);
-    const updatedGroups = groups.filter(g => g.id !== groupId);
-    setGroups(updatedGroups);
-    storage.local.set('groups', updatedGroups);
+    setAssignments(prev => {
+        const updated = prev.filter(a => a.groupId !== groupId);
+        storage.local.set('assignments', updated);
+        return updated;
+    });
+    setGroups(prev => {
+        const updated = prev.filter(g => g.id !== groupId);
+        storage.local.set('groups', updated);
+        return updated;
+    });
   };
+
   const assignTeacher = (groupId: string, professorId: string | null) => {
-    let updatedAssignments = [...assignments];
-    const existingAssignmentIndex = updatedAssignments.findIndex(a => a.groupId === groupId);
-
-    if (professorId) {
-      if (existingAssignmentIndex > -1) {
-        updatedAssignments[existingAssignmentIndex] = { ...updatedAssignments[existingAssignmentIndex], professorId };
-      } else {
-        updatedAssignments.push({ id: `assign-${Date.now()}`, groupId, professorId });
-      }
-    } else {
-      if (existingAssignmentIndex > -1) {
-        updatedAssignments.splice(existingAssignmentIndex, 1);
-      }
-    }
-    setAssignments(updatedAssignments);
-    storage.local.set('assignments', updatedAssignments);
+    setAssignments(prev => {
+        const updated = [...prev];
+        const index = updated.findIndex(a => a.groupId === groupId);
+        if (professorId) {
+            if (index > -1) {
+                updated[index] = { ...updated[index], professorId };
+            } else {
+                updated.push({ id: `assign-${Date.now()}`, groupId, professorId });
+            }
+        } else if (index > -1) {
+            updated.splice(index, 1);
+        }
+        storage.local.set('assignments', updated);
+        return updated;
+    });
   };
 
-  // Fix: Changed 'orderItems' to 'orderItem' to match the Classroom type definition.
   const addClassroom = (classroomData: Omit<Classroom, 'id' | 'students' | 'products' | 'suppliers' | 'events' | 'orders' | 'orderItem' | 'recipes' | 'families' | 'categories' | 'productStates'>) => {
-        const newClassroom: Classroom = {
-            ...classroomData,
-            id: `cls-${Date.now()}`,
-            students: [],
-            products: [],
-            suppliers: [],
-            events: [],
-            orders: [],
-            // Fix: Changed 'orderItems' to 'orderItem' to match the Classroom type definition.
-            orderItem: [],
-            recipes: [],
-            families: DEFAULT_FAMILIES,
-            categories: DEFAULT_CATEGORIES,
-            productStates: DEFAULT_PRODUCT_STATES,
-        };
-        const updated = [...classrooms, newClassroom];
-        setClassrooms(updated);
-        storage.local.set('classrooms', updated);
+    const newClassroom: Classroom = {
+        ...classroomData,
+        id: `cls-${Date.now()}`,
+        students: [],
+        products: [],
+        suppliers: [],
+        events: [],
+        orders: [],
+        orderItem: [],
+        recipes: [],
+        families: DEFAULT_FAMILIES,
+        categories: DEFAULT_CATEGORIES,
+        productStates: DEFAULT_PRODUCT_STATES,
     };
+    setClassrooms(prev => {
+        const updated = [...prev, newClassroom];
+        storage.local.set('classrooms', updated);
+        return updated;
+    });
+  };
 
-    const updateClassroom = (updatedClassroom: Classroom) => {
-        const updated = classrooms.map(c => c.id === updatedClassroom.id ? updatedClassroom : c);
-        setClassrooms(updated);
+  const updateClassroom = (updatedClassroom: Classroom) => {
+    setClassrooms(prev => {
+        const updated = prev.map(c => c.id === updatedClassroom.id ? updatedClassroom : c);
         storage.local.set('classrooms', updated);
-    };
+        return updated;
+    });
+  };
 
-    const deleteClassroom = (classroomId: string) => {
-        const updated = classrooms.filter(c => c.id !== classroomId);
-        setClassrooms(updated);
+  const deleteClassroom = (classroomId: string) => {
+    setClassrooms(prev => {
+        const updated = prev.filter(c => c.id !== classroomId);
         storage.local.set('classrooms', updated);
-    };
+        return updated;
+    });
+  };
     
-    const updateClassroomContent = <K extends keyof Classroom>(classroomId: string, key: K, data: Classroom[K]) => {
-        const updated = classrooms.map(c => {
+  const updateClassroomContent = <K extends keyof Classroom>(classroomId: string, key: K, data: Classroom[K]) => {
+    setClassrooms(prev => {
+        const updated = prev.map(c => (c.id === classroomId) ? { ...c, [key]: data } : c);
+        storage.local.set('classrooms', updated);
+        return updated;
+    });
+  };
+    
+  const resetClassroom = (classroomId: string) => {
+    setClassrooms(prev => {
+        const updated = prev.map(c => {
             if (c.id === classroomId) {
-                return { ...c, [key]: data };
+                return { ...c, students: [], products: [], suppliers: [], events: [], orders: [], orderItem: [], recipes: [] };
             }
             return c;
         });
-        setClassrooms(updated);
         storage.local.set('classrooms', updated);
-    };
-    
-    const resetClassroom = (classroomId: string) => {
-        const updated = classrooms.map(c => {
-            if (c.id === classroomId) {
-                return {
-                    ...c,
-                    students: [],
-                    products: [],
-                    suppliers: [],
-                    events: [],
-                    orders: [],
-                    // Fix: Changed 'orderItems' to 'orderItem' to match the Classroom type definition.
-                    orderItem: [],
-                    recipes: [],
-                };
-            }
-            return c;
-        });
-        setClassrooms(updated);
-        storage.local.set('classrooms', updated);
-    };
+        return updated;
+    });
+  };
 
   const downloadBackupData = () => {
     const allData = {
@@ -786,10 +896,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         filename: exportFileDefaultName,
         size: dataStr.length,
     };
-    const currentHistory = storage.local.get<BackupRecord[]>('backupHistory', []);
-    const updatedHistory = [newRecord, ...currentHistory].slice(0, 10);
-    setBackupHistory(updatedHistory);
-    storage.local.set('backupHistory', updatedHistory);
+    
+    setBackupHistory(prev => {
+        const updated = [newRecord, ...prev].slice(0, 10);
+        storage.local.set('backupHistory', updated);
+        return updated;
+    });
+
     storage.local.remove('lastBackupDate');
   };
 
@@ -858,14 +971,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const markMessageAsRead = (messageId: string, userId: string) => {
-    const updatedMessages = messages.map(msg => {
-        if (msg.id === messageId && !msg.readBy.includes(userId)) {
-            return { ...msg, readBy: [...msg.readBy, userId] };
-        }
-        return msg;
+    setMessages(prev => {
+        const updated = prev.map(msg => {
+            if (msg.id === messageId && !msg.readBy.includes(userId)) {
+                return { ...msg, readBy: [...msg.readBy, userId] };
+            }
+            return msg;
+        });
+        storage.local.set('messages', updated);
+        return updated;
     });
-    setMessages(updatedMessages);
-    storage.local.set('messages', updatedMessages);
   };
 
    // Notification functions
@@ -901,44 +1016,31 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
    // Order processing functions
     const processEventOrders = useCallback((eventId: string, modifiedItemsData: { orderItemId: string; newQuantity: number, teacherId: string }[], senderId: string) => {
-        const teachersToNotify = new Map<string, { modified: any[] }>();
-        const updatedItemsMap = new Map(modifiedItemsData.map(d => [d.orderItemId, d.newQuantity]));
-
-        const newOrderItems = orderItems.map(item => {
-            if (updatedItemsMap.has(item.id)) {
-                return { ...item, quantity: updatedItemsMap.get(item.id)! };
-            }
-            return item;
-        });
-
-        setOrderItems(newOrderItems);
-        storage.local.set('orderItems', newOrderItems);
-
-        const newOrders = orders.map(order => {
-            if (order.eventId === eventId && order.status === OrderStatus.SUBMITTED) {
-                return { ...order, status: OrderStatus.PROCESSED, updatedAt: new Date().toISOString() };
-            }
-            return order;
-        });
-        setOrders(newOrders);
-        storage.local.set('orders', newOrders);
         
-        // Group notifications by teacher
+        const teachersToNotify = new Map<string, { modified: any[] }>();
+        const originalItemsMap = new Map(orderItems.map(i => [i.id, i]));
+        
         modifiedItemsData.forEach(mod => {
-            if (!teachersToNotify.has(mod.teacherId)) {
-                teachersToNotify.set(mod.teacherId, { modified: [] });
-            }
-            const originalItem = orderItems.find(i => i.id === mod.orderItemId);
+            if (!teachersToNotify.has(mod.teacherId)) teachersToNotify.set(mod.teacherId, { modified: [] });
+            const originalItem = originalItemsMap.get(mod.orderItemId);
             if(originalItem && originalItem.quantity !== mod.newQuantity) {
-                 teachersToNotify.get(mod.teacherId)!.modified.push({
-                    name: originalItem.productName,
-                    from: originalItem.quantity,
-                    to: mod.newQuantity,
-                 });
+                 teachersToNotify.get(mod.teacherId)!.modified.push({ name: originalItem.productName, from: originalItem.quantity, to: mod.newQuantity });
             }
         });
+        
+        setOrderItems(prev => {
+            const updatedItemsMap = new Map(modifiedItemsData.map(d => [d.orderItemId, d.newQuantity]));
+            const updated = prev.map(item => updatedItemsMap.has(item.id) ? { ...item, quantity: updatedItemsMap.get(item.id)! } : item);
+            storage.local.set('orderItems', updated);
+            return updated;
+        });
 
-        // Send one message per affected teacher
+        setOrders(prev => {
+            const updated = prev.map(order => (order.eventId === eventId && order.status === OrderStatus.SUBMITTED) ? { ...order, status: OrderStatus.PROCESSED, updatedAt: new Date().toISOString() } : order);
+            storage.local.set('orders', updated);
+            return updated;
+        });
+        
         teachersToNotify.forEach((data, teacherId) => {
             if (data.modified.length > 0) {
                 const eventName = events.find(e => e.id === eventId)?.name || 'un evento';
@@ -949,26 +1051,18 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 });
                 body += "\nPor favor, revisa tu portal de pedidos para más detalles.";
                 sendMessage({ senderId, recipientIds: [teacherId], subject, body });
-                addNotification({
-                    userId: teacherId,
-                    title: `Ajustes en tu pedido para ${eventName}`,
-                    message: `El almacén ha modificado tu pedido. Haz clic para revisar.`,
-                    link: '/teacher/order-portal'
-                });
+                addNotification({ userId: teacherId, title: `Ajustes en tu pedido para ${eventName}`, message: `El almacén ha modificado tu pedido. Haz clic para revisar.`, link: '/teacher/order-portal' });
             }
         });
-    }, [orderItems, orders, sendMessage, events, addNotification]);
+    }, [orderItems, sendMessage, events, addNotification]);
 
     const reopenProcessedOrders = useCallback((eventId: string) => {
-        const newOrders = orders.map(order => {
-            if (order.eventId === eventId && order.status === OrderStatus.PROCESSED) {
-                return { ...order, status: OrderStatus.SUBMITTED, updatedAt: new Date().toISOString() };
-            }
-            return order;
+        setOrders(prev => {
+            const updated = prev.map(order => (order.eventId === eventId && order.status === OrderStatus.PROCESSED) ? { ...order, status: OrderStatus.SUBMITTED, updatedAt: new Date().toISOString() } : order);
+            storage.local.set('orders', updated);
+            return updated;
         });
-        setOrders(newOrders);
-        storage.local.set('orders', newOrders);
-    }, [orders]);
+    }, []);
 
     const finalizeReception = useCallback((eventId: string, verifiedItems: any[]) => {
         const newIncidents: Omit<Incident, 'id'>[] = [];
@@ -979,48 +1073,33 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 itemsWithIssues.add(vItem.productId);
             }
             vItem.incidents.forEach((inc: any) => {
-                newIncidents.push({
-                    eventId,
-                    productId: vItem.productId,
-                    productName: vItem.productName,
-                    supplierId: inc.supplierId,
-                    date: new Date().toISOString(),
-                    description: inc.description,
-                    orderItemIds: vItem.breakdown.map((bd: any) => bd.orderItemId),
-                });
+                newIncidents.push({ eventId, productId: vItem.productId, productName: vItem.productName, supplierId: inc.supplierId, date: new Date().toISOString(), description: inc.description, orderItemIds: vItem.breakdown.map((bd: any) => bd.orderItemId) });
             });
         });
 
         const createdIncidents = newIncidents.map(inc => ({ ...inc, id: `inc-${Date.now()}-${Math.random()}` }));
-        const updatedIncidents = [...incidents, ...createdIncidents];
-        setIncidents(updatedIncidents);
-        storage.local.set('incidents', updatedIncidents);
-
-        const eventOrders = orders.filter(o => o.eventId === eventId && o.status === OrderStatus.PROCESSED);
-        const eventOrderIds = new Set(eventOrders.map(o => o.id));
-        const eventItems = orderItems.filter(i => eventOrderIds.has(i.orderId));
-        
-        const affectedOrderIds = new Set<string>();
-        eventItems.forEach(item => {
-            if (itemsWithIssues.has(item.productId)) {
-                affectedOrderIds.add(item.orderId);
-            }
+        setIncidents(prev => {
+            const updated = [...prev, ...createdIncidents];
+            storage.local.set('incidents', updated);
+            return updated;
         });
 
-        const updatedOrders = orders.map(order => {
-            if (eventOrderIds.has(order.id)) {
-                return {
-                    ...order,
-                    status: affectedOrderIds.has(order.id) ? OrderStatus.RECEIVED_PARTIAL : OrderStatus.RECEIVED_OK,
-                    updatedAt: new Date().toISOString()
-                };
-            }
-            return order;
-        });
+        setOrders(prev => {
+            const eventOrderIds = new Set(prev.filter(o => o.eventId === eventId && o.status === OrderStatus.PROCESSED).map(o => o.id));
+            const eventItems = orderItems.filter(i => eventOrderIds.has(i.orderId));
+            const affectedOrderIds = new Set<string>();
+            eventItems.forEach(item => { if (itemsWithIssues.has(item.productId)) affectedOrderIds.add(item.orderId); });
 
-        setOrders(updatedOrders);
-        storage.local.set('orders', updatedOrders);
-    }, [orders, orderItems, incidents]);
+            const updated = prev.map(order => {
+                if (eventOrderIds.has(order.id)) {
+                    return { ...order, status: affectedOrderIds.has(order.id) ? OrderStatus.RECEIVED_PARTIAL : OrderStatus.RECEIVED_OK, updatedAt: new Date().toISOString() };
+                }
+                return order;
+            });
+            storage.local.set('orders', updated);
+            return updated;
+        });
+    }, [orderItems]);
 
   // Mini-Economato Functions
   const updateMiniEconomato = (items: MiniEconomatoItem[]) => {
@@ -1072,7 +1151,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <DataContext.Provider value={{ 
         users, 
-        setUsers: persistUsers, 
+        setUsers: () => {}, // setUsers is handled internally now
         addUser, 
         updateUser, 
         deleteUser, 
