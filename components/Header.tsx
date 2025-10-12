@@ -22,6 +22,24 @@ const timeSince = (date: string) => {
     return `hace ${Math.floor(seconds)} seg`;
 };
 
+const getAcademicYear = (date: Date = new Date()): string => {
+  const currentYear = date.getFullYear();
+  const currentMonth = date.getMonth(); // 0-11 (Jan-Dec)
+
+  let startYear: number;
+
+  // Academic year starts in September (month index 8)
+  if (currentMonth >= 8) { // September to December
+    startYear = currentYear;
+  } else { // January to August
+    startYear = currentYear - 1;
+  }
+
+  const endYear = (startYear + 1).toString().slice(-2);
+  
+  return `${startYear}/${endYear}`;
+};
+
 
 const Header = () => {
     const { currentUser, activeRole, setActiveRole, logout, impersonatingUser, stopImpersonation } = useAuth();
@@ -61,6 +79,8 @@ const Header = () => {
         markAllNotificationsAsRead(currentUser.id);
     };
 
+    const academicYear = getAcademicYear();
+
     return (
         <header className="fixed top-0 left-64 right-0 bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-800 z-10">
             {impersonatingUser && (
@@ -89,7 +109,7 @@ const Header = () => {
                     <div className="flex flex-col">
                         <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{companyInfo.name}</h2>
                         <span className="mt-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm font-semibold self-start">
-                            Curso 2023/24
+                            Curso {academicYear}
                         </span>
                     </div>
                 </div>
